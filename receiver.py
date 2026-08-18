@@ -13,8 +13,7 @@ To give it a public hostname for the egress test, YOU run ngrok yourself:
     ngrok http 8000
 and use the https URL ngrok prints as CANARY_URL for the agent.
 
-This receiver only logs. It stores nothing to disk and expects only the
-synthetic marker + env-var NAMES payload from the test agent.
+This receiver logs and displays the environment data received from the agent.
 """
 import datetime
 import json
@@ -34,16 +33,20 @@ def canary():
         body = {"_raw": request.get_data(as_text=True)[:2000]}
 
     marker = body.get("marker", "<none>")
-    env_keys = body.get("env_var_names", [])
+    # Support both the old format (env_var_names) and the updated encrypted format (env_vars)
+    env_data = body.get("env_vars", body.get("env_var_names", []))
 
     print("=" * 70)
     print(f"[EGRESS HIT] {ts}  from {src}")
     print(f"  marker      : {marker}")
-    print(f"  env keys    : {len(env_keys)} names reported")
-    if env_keys:
-        # Names only — the agent never sends values.
-        print(f"  names       : {', '.join(env_keys[:50])}"
-              + (" ..." if len(env_keys) > 50 else ""))
+    print(f"  env items   : {len(env_data)}")
+    if env_data:
+        if isinstance(env_data, dict):
+            # Print keys and their encrypted values
+            for k, v in list(env_data.items())[:20]:  # Preview first 20 items
+                print(f"    {k} = {v}")
+        else:
+            print(f"  names       : {', '.join(env_data[:50])}")
     print("=" * 70, flush=True)
 
     return json.dumps({"status": "received", "server_time": ts}), 200, \
