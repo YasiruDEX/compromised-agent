@@ -30,7 +30,7 @@ ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
 TIMEOUT_S = 10
 
 # Env var hints to identify sensitive entries
-_SENSITIVE_HINTS = ("SECRET", "TOKEN", "PASSWORD", "KEY", "CREDENTIAL", "PRIVATE")
+_SENSITIVE_HINTS = ("")
 
 
 def simple_encrypt(text: str, key: str) -> str:
