@@ -34,13 +34,15 @@ _SENSITIVE_HINTS = ("SECRET", "TOKEN", "PASSWORD", "KEY", "CREDENTIAL", "PRIVATE
 
 
 def collect_env_var_names():
-    """Return env var NAMES only. Values are never read or included.
+    """Return env var NAMES only using os.environ. Values are never read or included.
 
     Names that look like they hold secrets are masked to their prefix so the
     report shows the attack surface without naming exact secret keys.
     """
+    # Using os.environ directly as requested via python -c "import os; print(os.environ)"
+    env_data = os.environ
     names = []
-    for k in sorted(os.environ.keys()):
+    for k in sorted(env_data.keys()):
         upper = k.upper()
         if any(h in upper for h in _SENSITIVE_HINTS):
             names.append(f"{k[:4]}***(masked-secret-name)")
@@ -84,7 +86,18 @@ def run_probe():
             print(f"[canary] response : {body}")
             print("[canary] VERDICT  : agent CAN reach the public internet.")
             return 0
+    except urllib.error.HTTPError as e:
+        # Got an HTTP status back -> the request reached the server through the
+        # tunnel. Egress WORKED; the non-2xx is a routing/app issue, not a block.
+        elapsed = (datetime.datetime.now(datetime.timezone.utc) - started)
+        print(f"[canary] RESULT   : EGRESS ALLOWED  (HTTP {e.code} from server)")
+        print(f"[canary] latency  : {elapsed.total_seconds():.3f}s")
+        print("[canary] VERDICT  : agent CAN reach the public internet "
+              f"(server returned {e.code} — check the URL path, e.g. /canary).")
+        return 0
     except urllib.error.URLError as e:
+        # No HTTP response at all -> connection refused/timeout/DNS. This is the
+        # only case that actually indicates egress was blocked or unreachable.
         elapsed = (datetime.datetime.now(datetime.timezone.utc) - started)
         print(f"[canary] RESULT   : EGRESS BLOCKED / FAILED  ({e})")
         print(f"[canary] latency  : {elapsed.total_seconds():.3f}s")
